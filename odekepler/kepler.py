@@ -13,6 +13,8 @@ from io import BytesIO
 import scienceplots
 
 
+# set plot style
+plt.style.use(['science', 'notebook', 'no-latex'])
 
 # create a class that initialises the system
 class TwoBodySimulation():
@@ -277,6 +279,10 @@ class RKIntegrate:
         return orbit
 
 
+def _fetch_image(path):
+    response = requests.get(path)
+    return plt.imread(BytesIO(response.content))
+
 def plot_initial_system(system, save_dir = ''):
     '''
     Function that plots the initial system state.
@@ -286,55 +292,47 @@ def plot_initial_system(system, save_dir = ''):
             -save_dir (str)            : directory to save the initial system plot (default is '')
     
     '''
-    with plt.style.context(['notebook', 'no-latex', 'grid']):
+    fig, ax = plt.subplots(figsize = (8, 8))
 
-        fig, ax = plt.subplots(figsize = (8, 8))
+    # get initial state
+    u0 = system.ics()
+    
+    # sun and earth images
+    earth_img_url = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/earth.png'
+    sun_img_url   = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/sun.png'
 
-        # get initial state
-        u0 = system.ics()
-        
-        # sun and earth images
-        earth_img_url = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/earth.png'
-        sun_img_url   = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/sun.png'
+    earth_img = _fetch_image(earth_img_url)
+    sun_img   = _fetch_image(sun_img_url)
 
-        def fetch_image(path):
-            response = requests.get(path)
-            img      = plt.imread(BytesIO(response.content))
+    # include sun and earth images
+    sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom=0.07), \
+            (0, 0), frameon=False, boxcoords = 'data', pad=0)
+    ax.add_artist(sun_marker)
 
-            return img
+    earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom=0.03), \
+            (u0[0], u0[1]), frameon=False, boxcoords="data", pad=0)
+    ax.add_artist(earth_marker)
+    
+    # Add text box with initial conditions
+    vel_box = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    fig.text(0.67, 0.82,f'$x$ = {u0[0]:.2e}, $y$ = {u0[1]:.2e}\n$v_x = ${u0[2]:.2e}, $v_y = $ {u0[3]:.2e}', fontsize=10,
+            verticalalignment='bottom', horizontalalignment='right', bbox=vel_box)
 
-        earth_img = fetch_image(earth_img_url)
-        sun_img   = fetch_image(sun_img_url)
+    # plotting initial system 
+    plt.plot(u0[0], u0[1], linestyle = '-', linewidth = 0.3, color = "black")
+    
+    # decorate the plot
+    ax.set_title(f"Init system: e ={system.e:.2f}", fontsize = 20)
+    ax.set_xlabel(r'$x$ [au]')
+    ax.set_ylabel(r'$y$ [au]')
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1.5, 1.5)
 
-        # include sun and earth images
-        sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom=0.07), \
-                (0, 0), frameon=False, boxcoords = 'data', pad=0)
-        ax.add_artist(sun_marker)
-
-        earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom=0.03), \
-                (u0[0], u0[1]), frameon=False, boxcoords="data", pad=0)
-        ax.add_artist(earth_marker)
-        
-        # Add text box with initial conditions
-        vel_box = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        fig.text(0.67, 0.82,f'$x$ = {u0[0]:.2e}, $y$ = {u0[1]:.2e}\n$v_x = ${u0[2]:.2e}, $v_y = $ {u0[3]:.2e}', fontsize=10,
-                verticalalignment='bottom', horizontalalignment='right', bbox=vel_box)
-
-        # plotting initial system 
-        plt.plot(u0[0], u0[1], linestyle = '-', linewidth = 0.3, color = "black")
-        
-        # decorate the plot
-        ax.set_title(f"Init system: e ={system.e:.2f}")
-        ax.set_xlabel(r'$x$ [au]')
-        ax.set_ylabel(r'$y$ [au]')
-        ax.set_xlim(-1.5, 1.5)
-        ax.set_ylim(-1.5, 1.5)
-
-        if save_dir != '' :
-            plt.savefig(save_dir)
-        else:
-            plt.savefig('./initial_system.png')
-        plt.show()
+    if save_dir != '' :
+        plt.savefig(save_dir)
+    else:
+        plt.savefig('./initial_system.png')
+    plt.show()
 
 def animation_orbit(orbit, e, save_dir = ''):
     '''
@@ -348,6 +346,7 @@ def animation_orbit(orbit, e, save_dir = ''):
             -save_dir (str)      : directory to save the gif of the orbit.
 
     '''
+
     x   = orbit[:,0]
     y   = orbit[:,1]
     vx  = orbit[:,2]
@@ -356,67 +355,96 @@ def animation_orbit(orbit, e, save_dir = ''):
 
     fig, ax = plt.subplots(figsize = (8, 8))
 
-        # sun and earth images
+    # sun and earth images
     earth_img_url = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/earth.png'
     sun_img_url   = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/sun.png'
-
-    def fetch_image(path):
-        response = requests.get(path)
-        img      = plt.imread(BytesIO(response.content))
-
-        return img
         
-    earth_img = fetch_image(earth_img_url)
-    sun_img   = fetch_image(sun_img_url)
+    earth_img = _fetch_image(earth_img_url)
+    sun_img   = _fetch_image(sun_img_url)
 
-    earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom=0.03), \
-            (x[0], y[0]), frameon=False, boxcoords="data", pad=0)
-    ax.add_artist(earth_marker)
-
-    sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom=0.07), \
-            (0, 0), frameon=False, boxcoords = 'data', pad=0)
+    # Add Sun at the origin
+    sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom = 0.07), (0, 0), frameon = False)
     ax.add_artist(sun_marker)
 
-    line2, = ax.plot(x[0], y[0], linewidth = 0.4, c = 'black', label = 'orbit')
+    # Add Earth at the initial position
+    earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom = 0.03), (x[0], y[0]), frameon = False)
+    ax.add_artist(earth_marker)
 
-    vel_box = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    text_annotation = ax.text(0.33, 0.93, f'$x$ = {x[0]:.2e}, $y$ = {x[1]:.2e}\n$v_x$ = {vx[0]:.2e}, $v_y$ = {vy[0]:.2e}', fontsize=10, transform=ax.transAxes, bbox=vel_box)
+    # Plot orbit trail
+    line, = ax.plot([], [], lw = 0.4, c = 'black', label = 'Orbit')
 
-    ax.set_title(f"Orbit: e = {e:.2f}")
+    # Add velocity vector
+    #arrow = ax.quiver(x[0], y[0], vx[0], vy[0], color = 'red', scale = 50, label = "Velocity")
+
+    # Text box for position and velocity
+    vel_box = dict(boxstyle = 'round', facecolor = 'wheat', alpha = 0.5)
+    text = ax.text(0.33, 0.93, '', transform = ax.transAxes, fontsize = 10, bbox = vel_box)
+
+#    earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom=0.03), \
+#            (x[0], y[0]), frameon=False, boxcoords="data", pad=0)
+#    ax.add_artist(earth_marker)
+#     
+#    sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom=0.07), \
+#            (0, 0), frameon=False, boxcoords = 'data', pad=0)
+#    ax.add_artist(sun_marker)
+
+#    line2, = ax.plot(x[0], y[0], linewidth = 0.4, c = 'black', label = 'orbit')
+
+#    vel_box = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+#    text_annotation = ax.text(0.33, 0.93, f'$x$ = {x[0]:.2e}, $y$ = {x[1]:.2e}\n$v_x$ = {vx[0]:.2e}, $v_y$ = {vy[0]:.2e}', fontsize=10, transform=ax.transAxes, bbox=vel_box)
+
+    # Set plot limits and labels
+    ax.set_title(f"Orbit: e = {e:.2f}", fontsize = 20)
     ax.set_xlabel(r'$x$ [au]')
     ax.set_ylabel(r'$y$ [au]')
     ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1.5 if e < 0.03 else -2, 1.5 if e < 0.3 else 1)
+    ax.legend(loc = 'upper left')
     
-    if e < 0.3:
-        ax.set_ylim(-1.5, 1.5)
-    elif e >= 0.3 and e < 0.5:
-        ax.set_ylim(-2, 1)
-    elif e >= 0.5 and e < 0.7:
-        ax.set_ylim(-2, 1)
-    else:
-        ax.set_ylim(-2, 1)
+    # if e < 0.3:
+    #     ax.set_ylim(-1.5, 1.5)
+    # elif e >= 0.3 and e < 0.5:
+    #     ax.set_ylim(-2, 1)
+    # elif e >= 0.5 and e < 0.7:
+    #     ax.set_ylim(-2, 1)
+    # else:
+    #     ax.set_ylim(-2, 1)
 
     def update(frame):
-    
-        line2.set_xdata(x[:frame])
-        line2.set_ydata(y[:frame])
         
-        new_position        = (x[frame], y[frame])
-        earth_marker.xybox  = new_position
-        earth_marker.xy     = new_position
+        # Update the orbit trail
+        line.set_data(x[:frame], y[:frame])
+        # line.set_xdata(x[:frame])
+        # line.set_ydata(y[:frame])
+        
+        # Update Earth position
+        earth_marker.xybox = (x[frame], y[frame])
 
-        text_annotation.set_text(f'$x$ = {x[frame]:.2e}, $y$ = {y[frame]:.2e}\n$v_x$ = {vx[frame]:.2e}, $v_y$ = {vy[frame]:.2e}')
+        #update velocity vector
+        # arrow.set_offsets((x[frame], y[frame]))
+        # arrow.set_UVC(vx[frame], vy[frame])
 
-        return line2, earth_marker, text_annotation
+        # new_position        = (x[frame], y[frame])
+        # earth_marker.xybox  = new_position
+        # earth_marker.xy     = new_position
+
+        # Update text box with position and velocity
+        text.set_text(f'$x$ = {x[frame]:.2e}, $y$ = {y[frame]:.2e}\n$v_x$ = {vx[frame]:.2e}, $v_y$ = {vy[frame]:.2e}')
+
+        return line, earth_marker, text
     
-    if save_dir == '':
-        ani = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
+    # Create the animation
+    anim = FuncAnimation(fig, update, frames = len(x), interval = 20, blit = True)
+    
+    if save_dir:
+        #anim = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
         plt.show()
+        anim.save(save_dir, writer='pillow', fps=50)
         #ani.save('./orbit.gif', writer='pillow', fps=30)
-    elif save_dir != '':
-        ani = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
+    else:
+        #anim = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
         plt.show()
-        ani.save(save_dir, writer='pillow', fps=30)
+        
 
 def initialise_system(e, T, save_dir = ''):
     '''
@@ -490,7 +518,6 @@ def main():
     elif args.method == 'RK3':
         orbit = RKIntegrate.RK3(system, args.timestep)
     else:
-        args.method == 'RK4'
         orbit = RKIntegrate.RK4(system, args.timestep)
 
     # save the orbit
@@ -501,7 +528,7 @@ def main():
     np.savetxt(f'{args.method}_integrated_orbit.txt', data, header = header, delimiter = ',')
     
     print("Plotting orbit...")
-    animation_orbit(orbit,args.eccentricity ,args.savegif)
+    animation_orbit(orbit, args.eccentricity ,args.savegif)
 
 if __name__ == '__main__':
     main()
