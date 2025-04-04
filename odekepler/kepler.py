@@ -353,70 +353,70 @@ def animation_orbit(orbit, e, save_dir = ''):
     vx  = orbit[:,2]
     vy  = orbit[:,3]
 
-    with plt.style.context(['notebook', 'no-latex', 'grid']):
-        fig, ax = plt.subplots(figsize = (8, 8))
+
+    fig, ax = plt.subplots(figsize = (8, 8))
 
         # sun and earth images
-        earth_img_url = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/earth.png'
-        sun_img_url   = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/sun.png'
+    earth_img_url = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/earth.png'
+    sun_img_url   = 'https://raw.githubusercontent.com/GabrielBJ/practice-modules/main/sun.png'
 
-        def fetch_image(path):
-            response = requests.get(path)
-            img      = plt.imread(BytesIO(response.content))
+    def fetch_image(path):
+        response = requests.get(path)
+        img      = plt.imread(BytesIO(response.content))
 
-            return img
+        return img
         
-        earth_img = fetch_image(earth_img_url)
-        sun_img   = fetch_image(sun_img_url)
+    earth_img = fetch_image(earth_img_url)
+    sun_img   = fetch_image(sun_img_url)
 
-        earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom=0.03), \
-                (x[0], y[0]), frameon=False, boxcoords="data", pad=0)
-        ax.add_artist(earth_marker)
+    earth_marker = AnnotationBbox(OffsetImage(earth_img, zoom=0.03), \
+            (x[0], y[0]), frameon=False, boxcoords="data", pad=0)
+    ax.add_artist(earth_marker)
+
+    sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom=0.07), \
+            (0, 0), frameon=False, boxcoords = 'data', pad=0)
+    ax.add_artist(sun_marker)
+
+    line2, = ax.plot(x[0], y[0], linewidth = 0.4, c = 'black', label = 'orbit')
+
+    vel_box = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    text_annotation = ax.text(0.33, 0.93, f'$x$ = {x[0]:.2e}, $y$ = {x[1]:.2e}\n$v_x$ = {vx[0]:.2e}, $v_y$ = {vy[0]:.2e}', fontsize=10, transform=ax.transAxes, bbox=vel_box)
+
+    ax.set_title(f"Orbit: e = {e:.2f}")
+    ax.set_xlabel(r'$x$ [au]')
+    ax.set_ylabel(r'$y$ [au]')
+    ax.set_xlim(-1.5, 1.5)
     
-        sun_marker = AnnotationBbox(OffsetImage(sun_img, zoom=0.07), \
-                (0, 0), frameon=False, boxcoords = 'data', pad=0)
-        ax.add_artist(sun_marker)
+    if e < 0.3:
+        ax.set_ylim(-1.5, 1.5)
+    elif e >= 0.3 and e < 0.5:
+        ax.set_ylim(-2, 1)
+    elif e >= 0.5 and e < 0.7:
+        ax.set_ylim(-2, 1)
+    else:
+        ax.set_ylim(-2, 1)
 
-        line2, = ax.plot(x[0], y[0], linewidth = 0.4, c = 'black', label = 'orbit')
-
-        vel_box = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        text_annotation = ax.text(0.33, 0.93, f'$x$ = {x[0]:.2e}, $y$ = {x[1]:.2e}\n$v_x$ = {vx[0]:.2e}, $v_y$ = {vy[0]:.2e}', fontsize=10, transform=ax.transAxes, bbox=vel_box)
-
-        ax.set_title(f"Orbit: e = {e:.2f}")
-        ax.set_xlabel(r'$x$ [au]')
-        ax.set_ylabel(r'$y$ [au]')
-        ax.set_xlim(-1.5, 1.5)
+    def update(frame):
+    
+        line2.set_xdata(x[:frame])
+        line2.set_ydata(y[:frame])
         
-        if e < 0.3:
-            ax.set_ylim(-1.5, 1.5)
-        elif e >= 0.3 and e < 0.5:
-            ax.set_ylim(-2, 1)
-        elif e >= 0.5 and e < 0.7:
-            ax.set_ylim(-2, 1)
-        else:
-            ax.set_ylim(-2, 1)
+        new_position        = (x[frame], y[frame])
+        earth_marker.xybox  = new_position
+        earth_marker.xy     = new_position
 
-        def update(frame):
-        
-            line2.set_xdata(x[:frame])
-            line2.set_ydata(y[:frame])
-            
-            new_position        = (x[frame], y[frame])
-            earth_marker.xybox  = new_position
-            earth_marker.xy     = new_position
+        text_annotation.set_text(f'$x$ = {x[frame]:.2e}, $y$ = {y[frame]:.2e}\n$v_x$ = {vx[frame]:.2e}, $v_y$ = {vy[frame]:.2e}')
 
-            text_annotation.set_text(f'$x$ = {x[frame]:.2e}, $y$ = {y[frame]:.2e}\n$v_x$ = {vx[frame]:.2e}, $v_y$ = {vy[frame]:.2e}')
-
-            return line2, earth_marker, text_annotation
-        
-        if save_dir == '':
-            ani = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
-            plt.show()
-            #ani.save('./orbit.gif', writer='pillow', fps=30)
-        elif save_dir != '':
-            ani = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
-            plt.show()
-            ani.save(save_dir, writer='pillow', fps=30)
+        return line2, earth_marker, text_annotation
+    
+    if save_dir == '':
+        ani = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
+        plt.show()
+        #ani.save('./orbit.gif', writer='pillow', fps=30)
+    elif save_dir != '':
+        ani = FuncAnimation(fig = fig, func = update, frames = len(x), interval = 40, blit = True)
+        plt.show()
+        ani.save(save_dir, writer='pillow', fps=30)
 
 def initialise_system(e, T, save_dir = ''):
     '''
